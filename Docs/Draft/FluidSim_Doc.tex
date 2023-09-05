@@ -1,8 +1,26 @@
-\documentclass[12pt, titlepage]{article}
+\documentclass[15pt, titlepage]{article}
 \usepackage{fancyhdr}
 \usepackage{tikz}
 \usetikzlibrary{patterns}
 \usepackage{caption}
+\usepackage{listings}
+
+\lstset{language=C++,
+frame=tbrl,
+aboveskip=3mm,
+belowskip=3mm,
+showstringspaces=false,
+columns=flexible,
+basicstyle={\small\ttfamily},
+numbers=none,
+numberstyle=\tiny\color{gray},
+keywordstyle=\color{blue},
+commentstyle=\color{dkgreen},
+stringstyle=\color{mauve},
+breaklines=true,
+breakatwhitespace=true,
+tabsize=3
+}
 
 \pagestyle{fancy}
 \fancyhead[L]{Fluid Simulation}
@@ -81,7 +99,15 @@ The equalization of pressure across the given region is almost instantaneous whe
 x_{i, j} = \frac{x_{i, j} + x_{i+1, j} + x_{i-1, j} + x_{i, j+1} + x_{i, j-1}}{5}
 \]
 
-This is adequate hydrostatic problems, since there is no movement in the fluid.
+This is adequate in hydrostatic problems, since there is no movement in the fluid.
+
+\begin{lstlisting}
+void Grid::diffuse()
+{
+	next_values[i][j] = (values[i][j] + values[i-1][j] + values[i+1][j] + values[i][j-1] + values[i][j+1]) / 5;
+	values.swap(next_values);
+}
+\end{lstlisting}
 
 \subsection{Problems}
 For small areas, specifically the localozed region defined by the cells being averaged, this works, however since this is effectively an averaging kernel that goes through the entire grid there are bound to be losses in the global domain. 
@@ -132,7 +158,7 @@ The direction of flow also determines how the pressure changes, so any alteratio
 Instead of using conventional averages we use weighted averages where the weights are the distance of grids located in the path of fluid flow from the vector itself.
 The \textit{closer} a vector is to a grid cell the more significantly it contributes to the change in pressure. 
 
-These distances are the $sin(\alpha)$ and $cos(\alpha)$ in the $y$ and $x$ directions respectively. After normalizing the vector there is no need to calculate these values and we can just use the $x$ and $y$ coordinates of the subsequent unit vector.
+These distances are the $sin(\alpha)$ and $cos(\alpha)$ in the $y$ and $x$ directions respectively. After normalizing the vector there is no need to calculate these values and we can just use the $x$ and $y$ coordinates of the subsequent unit vector instead.
 
 Cells on the $x$ axis are weighted with $sin(\alpha)$ and grid cells located on the $y$ axis are multiplied by $cos(\alpha)$. The calculation is done in the following manner:
 
@@ -149,8 +175,161 @@ Cells on the $x$ axis are weighted with $sin(\alpha)$ and grid cells located on 
 	\end{cases}
 \]
 
+\begin{lstlisting}
+void Grid::diffuse()
+{
+    Vec2 vec;
+    for(int i = 1; i < gridSize-1; i++){
+        for(int j = 1; j < gridSize-1; j++){
+            vec = velocityField[i][j].normalize();
+            double sum = 0;
+            if(vec.x > 0 && vec.y > 0){
+                sum = (vec.y)*values[i+1][j] + (vec.x)*values[i][j-1];
+            }
+            else if(vec.x > 0 && vec.y < 0){
+                sum = (-vec.y)*values[i-1][j] + (vec.x)*values[i][j-1];
+            }
+            else if(vec.x < 0 && vec.y < 0){
+                sum = (-vec.y)*values[i-1][j] + (-vec.x)*values[i][j+1];
+            }
+            else if(vec.x < 0 && vec.y > 0){
+                sum = (vec.y)*values[i+1][j] + (-vec.x)*values[i][j+1];
+            }
+
+            if(std::abs(vec.x) + std::abs(vec.y) == 0) next_values[i][j] = 0;
+            else next_values[i][j] = sum/(std::abs(vec.x) + std::abs(vec.y));
+        }
+    }
+    values.swap(next_values);
+}
+\end{lstlisting}
+
 \section{Velocity Flow Field}
 
+This property defines the local velocities at which the fluid in a given are moves and is typically modelled as a vector field, which is free from divergence. Without divergence we adhere to our aforementioned rules of incompressibility and conservation of mass.
 
+Each grid cell in our program has a corresponding vector in its center indicating the direction and velocity of the flow in the region.
+
+\subsection{Static advection}
+
+External forces contribute greatly to the advection or change in the flow of a fluid, however without them the flow is considered static (or hydrostatic in the case of water). In such cases we simulate advection the same way as in the averaging of the pressure field, but with the velocity vectors.
+
+\[
+vec_{i,j} = \frac{vec_{i,j} + vec_{i+1,j} + vec_{i-1,j} + vec_{i,j+1} + vec_{i,j-1}}{5}
+\]
+
+If the length of a vector goes below a certain $\epsilon$ value then it is considered a null vector, where the flow is zero.
+
+\begin{lstlisting}
+void Grid::advect()
+{
+    for(int i = 1; i < gridSize-1; i++){
+        for(int j = 1; j < gridSize-1; j++){
+            next_velocityField[i][j] = (velocityField[i][j] + velocityField[i-1][j] + velocityField[i+1][j] + velocityField[i][j-1] + velocityField[i][j+1])*(1/5.0);
+            if(next_velocityField[i][j].length() < 0.1) next_velocityField[i][j] = Vec2(0, 0);
+        }
+    }
+    velocityField.swap(next_velocityField);
+}
+\end{lstlisting}
+
+\subsection{Dynamic advection}
+
+Since the simulation is performed in real-time it allows the user to interact with the fluid, making it possible to add extra pressure to local regions and modify the flow field by moving the mouse cursor.
+
+\bigskip
+
+First we must store the mouse's $x$ and $y$ positions in the event of a click and add it to and array of length $N$. This array serves as a moving window to help in the averaging of the cursor's speed and direction. The previous and the current position of the mouse would be sufficient enough to determine the speed and direction, howerver with only these two values the result would look choppy and discontinous, since the pixels themselves are arranged in a grid-like fashion results in the aforementioned calculations would incur a vector either parallel to an axis or angeled at $45^{\circ}$ at all times.
+
+\pagebreak
+
+\begin{lstlisting}
+void Screen::mousePressEvent(QMouseEvent *event)
+{
+    mousePos.x = event->pos().x();
+    mousePos.y = event->pos().y();
+
+    path.push_back(QPoint(mousePos.x, mousePos.y));
+    cursorDirection.x = 0;
+    cursorDirection.y = 0;
+}
+\end{lstlisting}
+
+\bigskip
+
+Then at every instance we register a mouse movement we store the current position of the cursor in the array, if it were to fil up, the values at the end, or in other words the oldest recorded position will be discarded.
+
+\begin{lstlisting}
+void Screen::mouseMoveEvent(QMouseEvent *event)
+{
+    Vec2 currentPos = Vec2(event->pos().x(), event->pos().y());
+    Vec2 speed = currentPos - mousePos;
+    mousePos = currentPos;
+    speed.y *= -1;
+    cursorDirection = speed;
+    path.push_back(QPoint(mousePos.x, mousePos.y));
+    index = (index+1) % wndSize;
+    directions[index] = cursorDirection;
+}
+\end{lstlisting}
+
+\bigskip
+
+Finally we average out these values resulting in a vector representing the speed and direction of movement of the cursor. Since the average is \textit{moving} this averaged vector will follow the mouse's true speed and direction quite smoothly.
+
+\begin{lstlisting}
+Vec2 smoothDir(0, 0);
+for(Vec2 v : directions){
+    smoothDir = smoothDir + v;
+}
+smoothDir = smoothDir * (1/(double)wndSize);
+\end{lstlisting}
+
+\bigskip
+
+Each time the screen is rendered we must calculate this moving average and using the mouse coordinates map it to our 2 dimensional grid in order to modify the flow velocity vector located in the correct region.
+
+\begin{lstlisting}
+i = event->pos().y()/(sizeY/gridSize)
+j = event->pos().x()/(sizeX/gridSize)
+velocityField[i][j] = smoothDir;
+\end{lstlisting}
+
+After each individual vector in the flow velocity field has been calculated the user can chose whether to visualize them or not with the following function.
+
+\begin{lstlisting}
+void Grid::paintEvent(QPaintEvent *event)
+{
+    QPainter painter(this);
+    QRect dirtyRect = event->rect();
+    painter.drawImage(dirtyRect, image, dirtyRect);
+
+    QPen pen(Qt::red, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    painter.setPen(pen);
+
+    int cellSize = sizeX/gridSize;
+
+    for(int i = 0; i < gridSize; i++){
+        for(int j = 0; j < gridSize; j++){
+            painter.translate(j*cellSize + cellSize/2.0, i*cellSize + cellSize/2.0);
+            painter.scale(1, -1);
+            QLineF line(0, 0, velocityField[i][j].x, velocityField[i][j].y);
+            painter.setPen(Qt::red);
+            painter.drawLine(line);
+
+            QPolygon head;
+            int h = 10;
+            double len = sqrt(velocityField[i][j].x*velocityField[i][j].x + velocityField[i][j].y*velocityField[i][j].y);
+            head << QPoint((velocityField[i][j].x - velocityField[i][j].y/len*3), (velocityField[i][j].y + velocityField[i][j].x/len*3))
+                 << QPoint((velocityField[i][j].x + velocityField[i][j].y/len*3), (velocityField[i][j].y - velocityField[i][j].x/len*3))
+                 << QPoint(velocityField[i][j].x + h * (velocityField[i][j].x/len), velocityField[i][j].y + h * (velocityField[i][j].y/len));
+
+            painter.setPen(Qt::green);
+            painter.drawPolygon(head);
+            painter.resetTransform();
+        }
+    }
+}
+\end{lstlisting}
 
 \end{document}
