@@ -1,4 +1,4 @@
-\documentclass[15pt, titlepage]{article}
+\documentclass[12pt, titlepage]{article}
 \usepackage{fancyhdr}
 \usepackage{tikz}
 \usetikzlibrary{patterns}
@@ -31,8 +31,8 @@ tabsize=3
 
 \pagestyle{fancy}
 
-\title{Fluid Simulation Documentation}
-\author{Nagy Balázs EIO1RQ}
+\title{Beszámoló szakmai gyakorlatról}
+\author{Nagy Balázs \\EIO1RQ, balazsnagy220@gmail.com\\\\Miskolci Egyetem Matematikai Tanszék\\üzemi instruktor, beosztás\\tel. szám}
 \date{\today}
 \maketitle
 
@@ -40,9 +40,19 @@ tabsize=3
 
 \pagebreak
 
+\section{Foreword}
+
+This project and the subsequent program code has been produced for the purposes of completing the Summer Internship at the University of Miskolc, more specifically at the Institute of Mathematics. Under the supervision and with the help of Imre Piller I have chosen to write a \textit{fluid simulation} program of which further specifications are presented in the following section. The language of this document has been chosen to be English in order to priorotize international availability for a wider audience. Conventions regarding the code, such as comments or variable names etc. also follow the pattern of using English.
+
 \section{Introduction}
 
-This project and the subsequent program code has been produced for the purposes of completing the Summer Internship at the University of Miskolc. The aim of the program is to simulate fluid flow in a limited region of space along with handling changes in pressure and in the velocity flow field. For the sake of simplicity the fluid is treated as incompressible and is assumed to be of low velocity (below 100$\frac{m}{s}$). Furthermore since total accuracy is not the main goal physical phenomena such as the boundary layer, no slip condition, surface tension and any effects relating to Reynolds numbers are ignored.
+The aim of the program is to simulate fluid flow in a limited region of space along with handling changes in pressure and in the velocity flow field. For the sake of simplicity the fluid is treated as incompressible and is assumed to be of low velocity (below 100$\frac{m}{s}$). Furthermore since total accuracy is not the main goal physical phenomena such as the boundary layer, no slip condition, surface tension and any effects relating to Reynolds numbers are ignored.
+
+\subsection{Specification and toolset}
+
+The simulation needs to run in a real-time environment and thus a fast and powerful language, C++, has been chosen to perform the internal calculations and aid in the ordered structuring of the program. For the purposes of visualization a graphical user interface (\textit{GUI}) written with the help of Qt is employed. Development was conducted within the Qt Creater IDE using the qmake build system. Along this documentation of the program the entire codebase can be found at \textit{https://github.com/baliking01/Fluid-Simulation}.
+
+\pagebreak
 
 \section{Initial approach}
 
@@ -64,7 +74,7 @@ Both of these approaches have their respective advantages and drawbacks.
 		}
 \end{tikzpicture}
   \captionof{figure}{Grid based}
-  \label{fig:test1}
+  \label{fig:grid}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
   \centering
@@ -74,12 +84,15 @@ Both of these approaches have their respective advantages and drawbacks.
 	\draw (0, -2) .. controls (1, -1) and (1, -3.4) .. (3, -1);
 \end{tikzpicture}
   \captionof{figure}{Particle based}
-  \label{fig:test2}
+  \label{fig:particle}
 \end{minipage}
 \end{figure}
 
+\bigskip
 
 The \textbf{Eulerian} way partitions the space into a grid and treats each cell as a localized region containing average data. As the size of the grid increases these localized cells become smaller, thus improving accuracy since the approximations of local values will be more accurate as well.
+
+\bigskip
 
 On the other hand, the using \textbf{Lagrangian} Coordinates we instead simulate individual particles and calculate their path and behavior while interacting with the environment.
 At large scales this becomes more complex than the previous approach
@@ -120,6 +133,8 @@ Although this results in pressure losses and does not adhere to the conservation
 
 As mentioned in the restricions there are many physical effects not accounted for, especially at the edges and in the corners of the grid, however since the distribution of pressure is defined as an average of a given cell and its neighbours' these cases must be handeled regardless.
 
+\bigskip
+
 Possible solutions are to limit the space that the kernel iterates through and leave a 1 cell thick \textit{border} on all sides, and or change the size (consequently the shape) of the kernel making it a $3x3$ square, which would get eliminate the problems caused by the corners.
 
 \subsection{Diffusion}
@@ -158,7 +173,11 @@ The direction of flow also determines how the pressure changes, so any alteratio
 Instead of using conventional averages we use weighted averages where the weights are the distance of grids located in the path of fluid flow from the vector itself.
 The \textit{closer} a vector is to a grid cell the more significantly it contributes to the change in pressure. 
 
+\bigskip
+
 These distances are the $sin(\alpha)$ and $cos(\alpha)$ in the $y$ and $x$ directions respectively. After normalizing the vector there is no need to calculate these values and we can just use the $x$ and $y$ coordinates of the subsequent unit vector instead.
+
+\bigskip
 
 Cells on the $x$ axis are weighted with $sin(\alpha)$ and grid cells located on the $y$ axis are multiplied by $cos(\alpha)$. The calculation is done in the following manner:
 
@@ -174,6 +193,10 @@ Cells on the $x$ axis are weighted with $sin(\alpha)$ and grid cells located on 
 	(-1) \cdot vec.x \cdot cell_{i-1, j} + vec.y \cdot cell_{i, j+1}, & x < 0, y > 0
 	\end{cases}
 \]
+
+And the following function listed below implements this mechanism of diffusion.
+
+\pagebreak
 
 \begin{lstlisting}
 void Grid::diffuse()
@@ -241,7 +264,7 @@ Since the simulation is performed in real-time it allows the user to interact wi
 
 First we must store the mouse's $x$ and $y$ positions in the event of a click and add it to and array of length $N$. This array serves as a moving window to help in the averaging of the cursor's speed and direction. The previous and the current position of the mouse would be sufficient enough to determine the speed and direction, howerver with only these two values the result would look choppy and discontinous, since the pixels themselves are arranged in a grid-like fashion results in the aforementioned calculations would incur a vector either parallel to an axis or angeled at $45^{\circ}$ at all times.
 
-\pagebreak
+\bigskip
 
 \begin{lstlisting}
 void Screen::mousePressEvent(QMouseEvent *event)
@@ -295,6 +318,8 @@ j = event->pos().x()/(sizeX/gridSize)
 velocityField[i][j] = smoothDir;
 \end{lstlisting}
 
+\section{Displaying the vector field}
+
 After each individual vector in the flow velocity field has been calculated the user can chose whether to visualize them or not with the following function.
 
 \begin{lstlisting}
@@ -331,5 +356,7 @@ void Grid::paintEvent(QPaintEvent *event)
     }
 }
 \end{lstlisting}
+
+\section{Conclusion}
 
 \end{document}
