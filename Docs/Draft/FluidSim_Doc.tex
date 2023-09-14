@@ -1,4 +1,6 @@
 \documentclass[12pt, titlepage]{article}
+\usepackage{t1enc}
+\usepackage[hungarian, english]{babel}
 \usepackage{fancyhdr}
 \usepackage{tikz}
 \usetikzlibrary{patterns}
@@ -32,12 +34,14 @@ tabsize=3
 \begin{document}
 
 \pagestyle{fancy}
+\selectlanguage{hungarian}
 
 \title{Beszámoló szakmai gyakorlatról}
-\author{Nagy Balázs \\EIO1RQ, balazsnagy220@gmail.com\\\\Miskolci Egyetem Matematikai Tanszék\\Piller Imre Instruktor\\tel. szám}
+\author{Nagy Balázs \\EIO1RQ, balazsnagy220@gmail.com\\\\Piller Imre, Instruktor\\Miskolci Egyetem, Matematikai Intézet\\+36-46/565-111/14-50}
 \date{\today}
 \maketitle
 
+\selectlanguage{english}
 \tableofcontents
 
 \pagebreak
@@ -52,7 +56,7 @@ The aim of the program is to simulate fluid flow in a limited region of space al
 
 \subsection{Specification and toolset}
 
-The simulation needs to run in a real-time environment and thus a fast and powerful language, C++, has been chosen to perform the internal calculations and aid in the ordered structuring of the program. For the purposes of visualization a graphical user interface (\textit{GUI}) written with the help of Qt is employed. Development was conducted within the Qt Creater IDE using the qmake build system. Along this documentation of the program the entire codebase can be found at \textit{https://github.com/baliking01/Fluid-Simulation}.
+The simulation needs to run in a real-time environment and thus a fast and powerful language, C++17, has been chosen to perform the internal calculations and aid in the ordered structuring of the program. For the purposes of visualization a graphical user interface (\textit{GUI}) written with the help of Qt is employed. Development was conducted within the Qt Creater IDE using the qmake build system. Along this documentation of the program the entire codebase can be found at \textit{https://github.com/baliking01/Fluid-Simulation}.
 
 \pagebreak
 
@@ -95,11 +99,11 @@ Both of these approaches have their respective advantages and drawbacks.
 
 \bigskip
 
-The \textbf{Eulerian} way partitions the space into a grid and treats each cell as a localized region containing average data. As the size of the grid increases these localized cells become smaller, thus improving accuracy since the approximations of local values will be more accurate as well.
+The \textbf{Eulerian} way partitions the space into a grid and treats each cell as a localized region containing average data as seen in Figure \ref{fig:grid}. As the size of the grid increases these localized cells become smaller, thus improving accuracy since the approximations of local values will be more accurate as well.
 
 \bigskip
 
-On the other hand, the using \textbf{Lagrangian} Coordinates we instead simulate individual particles and calculate their path and behavior while interacting with the environment.
+On the other hand, when using \textbf{Lagrangian} coordinates, see Figure \ref{fig:particle}, we instead simulate individual particles and calculate their path and behavior while interacting with the environment.
 At large scales this becomes more complex than the previous approach
 
 \subsection{Restrictions}
@@ -115,9 +119,9 @@ Furthermore only \textbf{homogenous materials} are used; mixing of different flu
 The equalization of pressure across the given region is almost instantaneous when adding pressure sources to it. For a simple heuristic simulation the following approach can be used:
 \[ 
 x_{i, j} = \frac{x_{i, j} + x_{i+1, j} + x_{i-1, j} + x_{i, j+1} + x_{i, j-1}}{5}
-\]
+\].
 
-This is adequate in hydrostatic problems, since there is no movement in the fluid.
+\noindent This is adequate in hydrostatic problems, since there is no movement in the fluid.
 
 \begin{lstlisting}
 void Grid::diffuse()
@@ -128,7 +132,7 @@ void Grid::diffuse()
 \end{lstlisting}
 
 \subsection{Problems}
-For small areas, specifically the localozed region defined by the cells being averaged, this works, however since this is effectively an averaging kernel that goes through the entire grid there are bound to be losses in the global domain. 
+For small areas, specifically the localized region defined by the cells being averaged, this works, however since this is effectively an averaging kernel that goes through the entire grid there are bound to be losses in the global domain. 
 
 \bigskip
 
@@ -136,15 +140,15 @@ Although this results in pressure losses and does not adhere to the conservation
 
 \bigskip
 
-As mentioned in the restricions there are many physical effects not accounted for, especially at the edges and in the corners of the grid, however since the distribution of pressure is defined as an average of a given cell and its neighbours' these cases must be handeled regardless.
+As mentioned in the restricions there are many physical effects not accounted for, especially at the edges and in the corners of the grid, however since the distribution of pressure is defined as an average of a given cell and its neighbours' these cases must be handled regardless.
 
 \bigskip
 
-Possible solutions are to limit the space that the kernel iterates through and leave a 1 cell thick \textit{border} on all sides, and or change the size (consequently the shape) of the kernel making it a $3x3$ square, which would get eliminate the problems caused by the corners.
+Possible solutions are to limit the space that the kernel iterates through and leave a 1 cell thick \textit{border} on all sides, and or change the size (consequently the shape) of the kernel making it a $3\times3$ square, which would get eliminate the problems caused by the corners.
 
 \subsection{Diffusion}
 
-When the velocity flow field is taken into account the issue of pressure distribution becomes much harder. This change with respect to time can be described by differentioal equations, but these would introduce much more calculations and solving for each individual cell is costly.
+When the velocity flow field is taken into account the issue of pressure distribution becomes much harder. This change with respect to time can be described by differential equations, but these would introduce much more calculations and solving for each individual cell is costly.
 
 \begin{center}
 \begin{tikzpicture}[scale=2]
@@ -160,8 +164,8 @@ When the velocity flow field is taken into account the issue of pressure distrib
 	
 	\draw[line width=1.3pt,-stealth](-1.22, -0.6)--(2.2, 1.6) node[anchor=south west]{$\boldsymbol{u}$};
 	
-	\draw[red,very thick] (-1.22, -0.6) -- (-1.22, 0.5) node[midway, left]{$sin(\alpha)$};
-	\draw[blue,very thick] (-1.22, -0.6) -- (0.5, -0.6) node[midway, below]{$cos(\alpha)$};
+	\draw[red,very thick] (-1.22, -0.6) -- (-1.22, 0.5) node[midway, left]{$\sin \alpha$};
+	\draw[blue,very thick] (-1.22, -0.6) -- (0.5, -0.6) node[midway, below]{$\cos \alpha$};
 	
 	\filldraw[fill=green!20!white, draw=green!50!black] (0.5, 0.5) -- (1.1, 0.5) arc (0:34:0.6) -- cycle node[midway, right]{$\alpha$};
 	\filldraw[fill=green!20!white, draw=green!50!black] (0.5, 0.5) -- (-0.1, 0.5) arc (180:214:0.6) -- cycle node[midway, left]{$\alpha$};
@@ -180,11 +184,11 @@ The \textit{closer} a vector is to a grid cell the more significantly it contrib
 
 \bigskip
 
-These distances are the $sin(\alpha)$ and $cos(\alpha)$ in the $y$ and $x$ directions respectively. After normalizing the vector there is no need to calculate these values and we can just use the $x$ and $y$ coordinates of the subsequent unit vector instead.
+These distances are the $\sin(\alpha)$ and $\cos(\alpha)$ in the $y$ and $x$ directions respectively. After normalizing the vector there is no need to calculate these values and we can just use the $x$ and $y$ coordinates of the subsequent unit vector instead.
 
 \bigskip
 
-Cells on the $x$ axis are weighted with $sin(\alpha)$ and grid cells located on the $y$ axis are multiplied by $cos(\alpha)$. The calculation is done in the following manner:
+Cells on the $x$ axis are weighted with $\sin(\alpha)$ and grid cells located on the $y$ axis are multiplied by $\cos(\alpha)$. The calculation is done in the following manner:
 
 \[
 	vec = \text{normalized vector at }cell_{i, j}
@@ -192,14 +196,14 @@ Cells on the $x$ axis are weighted with $sin(\alpha)$ and grid cells located on 
 
 \[
 	cell_{i, j} = \begin{cases}
-	vec.x \cdot cell_{i+1, j} + vec.y \cdot cell_{i, j-1}, & x > 0, y > 0 \\
-	vec.x \cdot cell_{i-1, j} + (-1)\cdot vec.y \cdot cell_{i, j-1}, & x > 0, y < 0 \\
-	(-1) \cdot vec.x \cdot cell_{i-1, j} + (-1) \cdot vec.y \cdot cell_{i, j+1}, & x < 0, y < 0 \\
+	vec.x \cdot cell_{i+1, j} + vec.y \cdot cell_{i, j-1}, & x > 0, y > 0, \\
+	vec.x \cdot cell_{i-1, j} + (-1)\cdot vec.y \cdot cell_{i, j-1}, & x > 0, y < 0, \\
+	(-1) \cdot vec.x \cdot cell_{i-1, j} + (-1) \cdot vec.y \cdot cell_{i, j+1}, & x < 0, y < 0, \\
 	(-1) \cdot vec.x \cdot cell_{i-1, j} + vec.y \cdot cell_{i, j+1}, & x < 0, y > 0
 	\end{cases}
 \]
 
-And the following function listed below implements this mechanism of diffusion.
+\noindent and the following function listed below implements this mechanism of diffusion.
 
 \pagebreak
 
@@ -240,13 +244,13 @@ Each grid cell in our program has a corresponding vector in its center indicatin
 
 \subsection{Static advection}
 
-External forces contribute greatly to the advection or change in the flow of a fluid, however without them the flow is considered static (or hydrostatic in the case of water). In such cases we simulate advection the same way as in the averaging of the pressure field, but with the velocity vectors.
+External forces contribute greatly to the advection or change in the flow of a fluid, however without them the flow is considered static (or hydrostatic in the case of water). In such cases we simulate advection the same way as in the averaging of the pressure field, but with the velocity vectors:
 
 \[
 vec_{i,j} = \frac{vec_{i,j} + vec_{i+1,j} + vec_{i-1,j} + vec_{i,j+1} + vec_{i,j-1}}{5}
-\]
+\].
 
-If the length of a vector goes below a certain $\epsilon$ value then it is considered a null vector, where the flow is zero.
+\noindent If the length of a vector goes below a certain $\epsilon$ value then it is considered a null vector, where the flow is zero.
 
 \begin{lstlisting}
 void Grid::advect()
@@ -267,7 +271,7 @@ Since the simulation is performed in real-time it allows the user to interact wi
 
 \bigskip
 
-First we must store the mouse's $x$ and $y$ positions in the event of a click and add it to and array of length $N$. This array serves as a moving window to help in the averaging of the cursor's speed and direction. The previous and the current position of the mouse would be sufficient enough to determine the speed and direction, howerver with only these two values the result would look choppy and discontinous, since the pixels themselves are arranged in a grid-like fashion results in the aforementioned calculations would incur a vector either parallel to an axis or angeled at $45^{\circ}$ at all times.
+First, we must store the mouse's $x$ and $y$ positions in the event of a click and add it to and array of length $N$. This array serves as a moving window to help in the averaging of the cursor's speed and direction. The previous and the current position of the mouse would be sufficient enough to determine the speed and direction, howerver with only these two values the result would look choppy and discontinous, since the pixels themselves are arranged in a grid-like fashion results in the aforementioned calculations would incur a vector either parallel to an axis or angled at $45^{\circ}$ at all times.
 
 \bigskip
 
@@ -285,7 +289,7 @@ void Screen::mousePressEvent(QMouseEvent *event)
 
 \bigskip
 
-Then at every instance we register a mouse movement we store the current position of the cursor in the array, if it were to fil up, the values at the end, or in other words the oldest recorded position will be discarded.
+Then at every instance we register a mouse movement we store the current position of the cursor in the array, if it were to fill up, the values at the end, or in other words the oldest recorded position will be discarded.
 
 \begin{lstlisting}
 void Screen::mouseMoveEvent(QMouseEvent *event)
@@ -303,7 +307,7 @@ void Screen::mouseMoveEvent(QMouseEvent *event)
 
 \bigskip
 
-Finally we average out these values resulting in a vector representing the speed and direction of movement of the cursor. Since the average is \textit{moving} this averaged vector will follow the mouse's true speed and direction quite smoothly.
+Finally, we average out these values resulting in a vector representing the speed and direction of movement of the cursor. Since the average is \textit{moving} this averaged vector will follow the mouse's actual speed and direction quite smoothly.
 
 \begin{lstlisting}
 Vec2 smoothDir(0, 0);
@@ -371,13 +375,13 @@ Drawing the head of each vector is a bit tricky, but it can be achieved with a l
     
 \end{lstlisting}
 
-After this the whole of the velocity flow field can be displayed in its full form, their lengths  indicating the speed of the flow in that specific localized region.
+After this, the whole of the velocity flow field can be displayed in its full form, their lengths  indicating the speed of the flow in that specific localized region.
 
 \pagebreak
 
 \section{Conclusion}
 
-The following snapshots have been taken while running the simulation. The vector field is set to visible and fluid pressure is distinguished by its red to light green gradient.
+The following images in FIgure \ref{fig:circular} and FIgure \ref{fig:flows} have been captured while running the simulation. The vector field is set to visible and fluid pressure is distinguished by its red to light green gradient. Cursor movement used for dynamic advection is presented intuitively in Figure \ref{fig:cursor-movement}.
 
 \begin{figure}[h!]
   \centering
@@ -400,10 +404,12 @@ The following snapshots have been taken while running the simulation. The vector
   \begin{subfigure}[b]{0.4\linewidth}
     \includegraphics[width=\linewidth]{images/sim3.png}
     \caption{Flow towards left lower corner.}
+    \label{fig:flows}
   \end{subfigure}
   \begin{subfigure}[b]{0.4\linewidth}
     \includegraphics[width=\linewidth]{images/cursor.png}
     \caption{Recorded cursor direction and intensity.}
+    \label{fig:cursor-movement}
   \end{subfigure}
   \caption{Diffusion and dynamic advection algorithm visualizer.}
   \label{fig:left flow with cursor follow}
